@@ -30,15 +30,18 @@ fn main() -> ! {
         // Create a delay abstraction based on SysTick
         let mut delay = hal::delay::Delay::new(cp.SYST, clocks);
 
+        // Let's mutate this from debugger...
+        let mut ms = 50_u32;    
+
         loop {
-            // On for 1s, off for 1s.
+            // On for / off for: 0.5s
             // https://doc.rust-lang.org/std/convert/enum.Infallible.html
             led.set_high().unwrap();
             xled.set_low().unwrap();
-            delay.delay_ms(1000_u32);
+            delay.delay_ms(ms);
             led.set_low().unwrap();
             xled.set_high().unwrap();
-            delay.delay_ms(1000_u32);
+            delay.delay_ms(ms);
         }
     } else {
         panic!("failed to access peripherals");
