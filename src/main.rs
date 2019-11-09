@@ -10,7 +10,10 @@ use cortex_m_semihosting::{debug, hprintln};
 use crate::hal::{prelude::*, stm32};
 use stm32f4xx_hal as hal;
 
-#[rtfm::app(device = stm32f4xx_hal)]
+// For the real hardware use device = stm32f4xx_hal
+// For Qemu, use lm3s6965 (doesn't work at the moment)
+
+#[rtfm::app(device = lm3s6965)]
 const APP: () = {
     #[init]
     fn init(_: init::Context) {
@@ -39,6 +42,7 @@ const APP: () = {
             loop {
                 // On for / off for: 0.5s
                 // https://doc.rust-lang.org/std/convert/enum.Infallible.html
+                hprintln!("Blink!").unwrap();
                 led.set_high().unwrap();
                 xled.set_low().unwrap();
                 delay.delay_ms(ms);
