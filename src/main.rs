@@ -13,7 +13,7 @@ use stm32f4xx_hal as hal;
 // For the real hardware use device = stm32f4xx_hal
 // For Qemu, use lm3s6965 (doesn't work at the moment)
 
-#[rtfm::app(device = lm3s6965)]
+#[rtfm::app(device = stm32f4xx_hal)]
 const APP: () = {
     #[init]
     fn init(_: init::Context) {
