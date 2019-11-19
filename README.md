@@ -1,4 +1,4 @@
-# Rust Brighton Embedded LEDs
+# Rust Embedded LEDs project
 
 A Rust project created by the Brighton Rust User Group for the STM32F411 Nucleo-64 Discovery board.
 
