@@ -19,49 +19,69 @@ fn next_in_ring(an_array: &[i32], counter: usize) -> i32 {
 
 #[rtfm::app(device = stm32f4xx_hal)]
 const APP: () = {
+
+    struct Resources {
+        led: hal::gpio::gpioa::PA5<hal::gpio::Output<hal::gpio::PushPull>>,
+        xled: hal::gpio::gpioa::PA6<hal::gpio::Output<hal::gpio::PushPull>>,
+        delay: hal::delay::Delay            
+    }
+    
     #[init]
-    fn init(_: init::Context) {
-        // Access the device peripherals (dp) and cortex peripherals (cp):
+    fn init(_cx: init::Context) -> init::LateResources {
+        // Our device and cortex peripherals
         if let (Some(dp), Some(cp)) = (
             stm32::Peripherals::take(),
-            cortex_m::peripheral::Peripherals::take(),
-        ) {
-            // Set up the LED: it's connected to pin PA5 on the microcontroler
-            let gpioa = dp.GPIOA.split();
-            let mut led = gpioa.pa5.into_push_pull_output();
-            
+            cortex_m::peripheral::Peripherals::take())
+        {
+            // Set up the LED...
+            // First is connected to pin PA5 on the microcontroler
             // The external LED, on the next pin down:
-            let mut xled = gpioa.pa6.into_push_pull_output();
+            let gpioa = dp.GPIOA.split();
+            let led = gpioa.pa5.into_push_pull_output();
+            let xled = gpioa.pa6.into_push_pull_output();
             
-            // Set up the system clock. We want to run at 48MHz for this one.
+            // Set up the system clock. We want to run at 48MHz
+            // because ... ???
             let rcc = dp.RCC.constrain();
             let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
-            
+        
             // Create a delay abstraction based on SysTick
-            let mut delay = hal::delay::Delay::new(cp.SYST, clocks);
+            let delay = hal::delay::Delay::new(cp.SYST, clocks);
             
-            // LED display pattern, and step size in ms
-            let pattern = [1, 1, 1, 0, 1, 0, 1, 0];
-            let ms = 250_u32;    
-            let mut counter = 0;
-            
-            loop {
-                if next_in_ring(&pattern, counter) == 1 {
-                    hprintln!("On").unwrap();                    
-                    led.set_high().unwrap();
-                    xled.set_high().unwrap();
-                }
-                else {
-                    hprintln!("Off").unwrap();
-                    led.set_low().unwrap();
-                    xled.set_low().unwrap();                    
-                }
-                
-                delay.delay_ms(ms);
-                counter += 1;
-            }
-        } else {
+            init::LateResources{ led, xled, delay }
+        }
+        else {
             panic!("failed to access peripherals");
+        }
+    }
+
+    #[idle(resources = [led, xled, delay])]
+    fn idle(cx: idle::Context) -> ! {
+
+        let (led, xled, delay) = (
+            cx.resources.led,
+            cx.resources.xled,
+            cx.resources.delay);
+        
+        // LED display pattern, and step size in ms
+        let pattern = [1, 1, 1, 0, 1, 0, 1, 0];
+        let ms = 250_u32;    
+        let mut counter = 0;
+        
+        loop {
+            if next_in_ring(&pattern, counter) == 1 {
+                hprintln!("On").unwrap();                    
+                led.set_high().unwrap();
+                xled.set_high().unwrap();
+            }
+            else {
+                hprintln!("Off").unwrap();
+                led.set_low().unwrap();
+                xled.set_low().unwrap();                    
+            }
+            
+            delay.delay_ms(ms);
+            counter += 1;
         }
     }
 
