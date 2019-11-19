@@ -18,4 +18,4 @@ Almost everything!
 
 # Documentation
 
-Check out the [wiki](wiki)
+Check out the [wiki](../../wiki)
