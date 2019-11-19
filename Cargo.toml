@@ -1,8 +1,8 @@
 [package]
-authors = ["Richard Dallaway <richard@dallaway.com>"]
-edition = "2018"
+authors = ["Eric Clack <eric@bn7.net>"]
+edition = "2019"
 readme = "README.md"
-name = "rust-brighton-embedded-day-2"
+name = "rust-brighton-embedded-leds"
 version = "0.1.0"
 
 [dependencies]
