@@ -10,6 +10,7 @@ use cortex_m_semihosting::{debug, hprintln};
 use crate::hal::{prelude::*, stm32};
 use stm32f4xx_hal as hal;
 
+
 // LED display pattern, and step size in ms
 static PATTERN: [i32; 8] = [1, 1, 1, 0, 1, 0, 1, 0];
 
@@ -20,7 +21,7 @@ fn next_in_ring(an_array: &[i32], counter: usize) -> i32 {
     an_array[slice]
 }
 
-#[rtfm::app(device = stm32f4xx_hal)]
+#[rtfm::app(device = stm32f4xx_hal::stm32)]
 const APP: () = {
 
     struct Resources {
@@ -42,6 +43,10 @@ const APP: () = {
             let gpioa = dp.GPIOA.split();
             let led = gpioa.pa5.into_push_pull_output();
             let xled = gpioa.pa6.into_push_pull_output();
+
+            // Set up a switch as input with interrupt
+            gpioa.pa0.into_pull_up_input();
+            // TO DO interupt
             
             // Set up the system clock. We want to run at 48MHz
             // because ... ???
@@ -85,6 +90,12 @@ const APP: () = {
             delay.delay_ms(ms);
             counter += 1;
         }
+    }
+
+    #[task(binds = EXTI1)]
+    fn button(_: button::Context) {
+        hprintln!("Interrupt!").unwrap();
+        // https://flowdsp.io/blog/stm32f3-01-interrupts/
     }
 
 };
