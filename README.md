@@ -16,6 +16,8 @@ Almost everything!
 - Launch `openocd`
 - `cargo run`
 
+This will start up the Gnu Debugger, so type 'c' to continue, or you could set breakpoints, step through the code etc. See the [wiki](../../wiki/debugging) for more info. 
+
 # Documentation
 
 Check out the [wiki](../../wiki)
