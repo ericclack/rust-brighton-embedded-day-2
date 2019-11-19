@@ -1,6 +1,6 @@
 [package]
 authors = ["Eric Clack <eric@bn7.net>"]
-edition = "2019"
+edition = "2018"
 readme = "README.md"
 name = "rust-brighton-embedded-leds"
 version = "0.1.0"
@@ -31,7 +31,7 @@ cortex-m-rtfm = "0.5.0-beta.1"
 
 # this lets you use `cargo fix`!
 [[bin]]
-name = "rust-brighton-embedded-day-2"
+name = "rust-brighton-embedded-leds"
 test = false
 bench = false
 
