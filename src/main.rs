@@ -10,6 +10,9 @@ use cortex_m_semihosting::{debug, hprintln};
 use crate::hal::{prelude::*, stm32};
 use stm32f4xx_hal as hal;
 
+// LED display pattern, and step size in ms
+static PATTERN: [i32; 8] = [1, 1, 1, 0, 1, 0, 1, 0];
+
 /// Treat the array as a ring, i.e. the counter wraps around so
 /// that you can repeat the array forever by incrementing counter
 fn next_in_ring(an_array: &[i32], counter: usize) -> i32 {
@@ -63,13 +66,12 @@ const APP: () = {
             cx.resources.xled,
             cx.resources.delay);
         
-        // LED display pattern, and step size in ms
-        let pattern = [1, 1, 1, 0, 1, 0, 1, 0];
+        // How quick between LED transitions?
         let ms = 250_u32;    
         let mut counter = 0;
         
         loop {
-            if next_in_ring(&pattern, counter) == 1 {
+            if next_in_ring(&PATTERN, counter) == 1 {
                 hprintln!("On").unwrap();                    
                 led.set_high().unwrap();
                 xled.set_high().unwrap();
