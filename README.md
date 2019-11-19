@@ -16,3 +16,6 @@ Almost everything!
 - Launch `openocd`
 - `cargo run`
 
+# Documentation
+
+Check out the [wiki](wiki)
