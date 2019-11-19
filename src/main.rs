@@ -27,6 +27,7 @@ const APP: () = {
     struct Resources {
         led: hal::gpio::gpioa::PA5<hal::gpio::Output<hal::gpio::PushPull>>,
         xled: hal::gpio::gpioa::PA6<hal::gpio::Output<hal::gpio::PushPull>>,
+        button: hal::gpio::gpioa::PA0<hal::gpio::Input<hal::gpio::PullUp>>,
         delay: hal::delay::Delay            
     }
     
@@ -45,7 +46,7 @@ const APP: () = {
             let xled = gpioa.pa6.into_push_pull_output();
 
             // Set up a switch as input with interrupt
-            gpioa.pa0.into_pull_up_input();
+            let button = gpioa.pa0.into_pull_up_input();
             // TO DO interupt
             
             // Set up the system clock. We want to run at 48MHz
@@ -56,19 +57,20 @@ const APP: () = {
             // Create a delay abstraction based on SysTick
             let delay = hal::delay::Delay::new(cp.SYST, clocks);
             
-            init::LateResources{ led, xled, delay }
+            init::LateResources{ led, xled, button, delay }
         }
         else {
             panic!("failed to access peripherals");
         }
     }
 
-    #[idle(resources = [led, xled, delay])]
+    #[idle(resources = [led, xled, button, delay])]
     fn idle(cx: idle::Context) -> ! {
 
-        let (led, xled, delay) = (
+        let (led, xled, button, delay) = (
             cx.resources.led,
             cx.resources.xled,
+            cx.resources.button,
             cx.resources.delay);
         
         // How quick between LED transitions?
@@ -86,14 +88,15 @@ const APP: () = {
                 led.set_low().unwrap();
                 xled.set_low().unwrap();                    
             }
-            
+
+            hprintln!("Button {:?}", button.is_high()).unwrap();
             delay.delay_ms(ms);
             counter += 1;
         }
     }
 
     #[task(binds = EXTI1)]
-    fn button(_: button::Context) {
+    fn button_push(_: button_push::Context) {
         hprintln!("Interrupt!").unwrap();
         // https://flowdsp.io/blog/stm32f3-01-interrupts/
     }
