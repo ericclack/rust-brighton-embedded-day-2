@@ -10,8 +10,12 @@ use cortex_m_semihosting::{debug, hprintln};
 use crate::hal::{prelude::*, stm32};
 use stm32f4xx_hal as hal;
 
-// For the real hardware use device = stm32f4xx_hal
-// For Qemu, use lm3s6965 (doesn't work at the moment)
+/// Treat the array as a ring, i.e. the counter wraps around so
+/// that you can repeat the array forever by incrementing counter
+fn next_in_ring(an_array: &[i32], counter: usize) -> i32 {
+    let slice = counter % an_array.len();
+    an_array[slice]
+}
 
 #[rtfm::app(device = stm32f4xx_hal)]
 const APP: () = {
@@ -36,19 +40,25 @@ const APP: () = {
             // Create a delay abstraction based on SysTick
             let mut delay = hal::delay::Delay::new(cp.SYST, clocks);
             
-            // Let's mutate this from debugger...
-            let mut ms = 50_u32;    
+            // LED display pattern, and step size in ms
+            let pattern = [1, 1, 1, 0, 1, 0, 1, 0];
+            let ms = 250_u32;    
+            let mut counter = 0;
             
             loop {
-                // On for / off for: 0.5s
-                // https://doc.rust-lang.org/std/convert/enum.Infallible.html
-                hprintln!("Blink!").unwrap();
-                led.set_high().unwrap();
-                xled.set_low().unwrap();
+                if next_in_ring(&pattern, counter) == 1 {
+                    hprintln!("On").unwrap();                    
+                    led.set_high().unwrap();
+                    xled.set_high().unwrap();
+                }
+                else {
+                    hprintln!("Off").unwrap();
+                    led.set_low().unwrap();
+                    xled.set_low().unwrap();                    
+                }
+                
                 delay.delay_ms(ms);
-                led.set_low().unwrap();
-                xled.set_high().unwrap();
-                delay.delay_ms(ms);
+                counter += 1;
             }
         } else {
             panic!("failed to access peripherals");
