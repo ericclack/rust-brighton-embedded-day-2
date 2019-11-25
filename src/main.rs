@@ -9,7 +9,6 @@ use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
 use crate::hal::{prelude::*, stm32};
 use stm32f4xx_hal as hal;
-use stm32::Interrupt;
 use stm32f4xx_hal::gpio::{ExtiPin, Edge};
 
 // LED display pattern, and step size in ms
@@ -29,6 +28,7 @@ const APP: () = {
         led: hal::gpio::gpioa::PA5<hal::gpio::Output<hal::gpio::PushPull>>,
         xled: hal::gpio::gpioa::PA6<hal::gpio::Output<hal::gpio::PushPull>>,
         button: hal::gpio::gpioc::PC13<hal::gpio::Input<hal::gpio::Floating>>,
+        exti: stm32::EXTI,
         delay: hal::delay::Delay            
     }
     
@@ -52,6 +52,8 @@ const APP: () = {
             let mut button = gpioc.pc13.into_floating_input();
             // Enable interrupt
             let mut exti = dp.EXTI;
+            let mut syscfg = dp.SYSCFG;
+            //button.make_interrupt_source(&mut syscfg);
             button.enable_interrupt(&mut exti);
             button.trigger_on_edge(&mut exti, Edge::FALLING);
             
@@ -63,7 +65,7 @@ const APP: () = {
             // Create a delay abstraction based on SysTick
             let delay = hal::delay::Delay::new(cp.SYST, clocks);
             
-            init::LateResources{ led, xled, button, delay }
+            init::LateResources{ led, xled, button, exti, delay }
         }
         else {
             panic!("failed to access peripherals");
@@ -95,17 +97,17 @@ const APP: () = {
                 xled.set_low().unwrap();                    
             }
 
-            let pressed = button.is_low();
-            hprintln!("Button {:?}", pressed).unwrap();
+            //let pressed = button.is_low();
+            //hprintln!("Button {:?}", pressed).unwrap();
             delay.delay_ms(ms);
             counter += 1;
         }
     }
 
-    #[task(binds = EXTI15_10)]
-    fn press(_: press::Context) {
-        hprintln!("Interrupt!").unwrap();
-        // https://flowdsp.io/blog/stm32f3-01-interrupts/
+    #[task(binds = EXTI15_10, priority = 2, resources = [button, exti])]
+    fn press(cx: press::Context) {
+        hprintln!("Interrupt!").unwrap();        
+        cx.resources.button.clear_interrupt_pending_bit(cx.resources.exti);
     }
 
 };
