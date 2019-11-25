@@ -9,7 +9,8 @@ use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
 use crate::hal::{prelude::*, stm32};
 use stm32f4xx_hal as hal;
-
+use stm32::Interrupt;
+use stm32f4xx_hal::gpio::{ExtiPin, Edge};
 
 // LED display pattern, and step size in ms
 static PATTERN: [i32; 8] = [1, 1, 1, 0, 1, 0, 1, 0];
@@ -27,7 +28,7 @@ const APP: () = {
     struct Resources {
         led: hal::gpio::gpioa::PA5<hal::gpio::Output<hal::gpio::PushPull>>,
         xled: hal::gpio::gpioa::PA6<hal::gpio::Output<hal::gpio::PushPull>>,
-        button: hal::gpio::gpioc::PC13<hal::gpio::Input<hal::gpio::PullUp>>,
+        button: hal::gpio::gpioc::PC13<hal::gpio::Input<hal::gpio::Floating>>,
         delay: hal::delay::Delay            
     }
     
@@ -48,8 +49,11 @@ const APP: () = {
             // Set up a switch as input with interrupt
             let gpioc = dp.GPIOC.split();
             // Pull up means not pressed = high, pressed = low
-            let button = gpioc.pc13.into_pull_up_input();
-            // TO DO interupt
+            let mut button = gpioc.pc13.into_floating_input();
+            // Enable interrupt
+            let mut exti = dp.EXTI;
+            button.enable_interrupt(&mut exti);
+            button.trigger_on_edge(&mut exti, Edge::FALLING);
             
             // Set up the system clock. We want to run at 48MHz
             // because ... ???
@@ -98,8 +102,8 @@ const APP: () = {
         }
     }
 
-    #[task(binds = EXTI1)]
-    fn button_push(_: button_push::Context) {
+    #[task(binds = EXTI15_10)]
+    fn press(_: press::Context) {
         hprintln!("Interrupt!").unwrap();
         // https://flowdsp.io/blog/stm32f3-01-interrupts/
     }
