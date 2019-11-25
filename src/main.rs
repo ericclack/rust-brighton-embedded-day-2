@@ -27,7 +27,7 @@ const APP: () = {
     struct Resources {
         led: hal::gpio::gpioa::PA5<hal::gpio::Output<hal::gpio::PushPull>>,
         xled: hal::gpio::gpioa::PA6<hal::gpio::Output<hal::gpio::PushPull>>,
-        button: hal::gpio::gpioa::PA1<hal::gpio::Input<hal::gpio::PullDown>>,
+        button: hal::gpio::gpioc::PC13<hal::gpio::Input<hal::gpio::PullUp>>,
         delay: hal::delay::Delay            
     }
     
@@ -46,7 +46,9 @@ const APP: () = {
             let xled = gpioa.pa6.into_push_pull_output();
 
             // Set up a switch as input with interrupt
-            let button = gpioa.pa1.into_pull_down_input();
+            let gpioc = dp.GPIOC.split();
+            // Pull up means not pressed = high, pressed = low
+            let button = gpioc.pc13.into_pull_up_input();
             // TO DO interupt
             
             // Set up the system clock. We want to run at 48MHz
@@ -89,7 +91,8 @@ const APP: () = {
                 xled.set_low().unwrap();                    
             }
 
-            hprintln!("Button {:?}", button.is_low()).unwrap();
+            let pressed = button.is_low();
+            hprintln!("Button {:?}", pressed).unwrap();
             delay.delay_ms(ms);
             counter += 1;
         }
