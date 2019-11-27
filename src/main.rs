@@ -39,6 +39,20 @@ const APP: () = {
             stm32::Peripherals::take(),
             cortex_m::peripheral::Peripherals::take())
         {
+            // Write the SYSCFGGEN bit to this register in order to enable
+            // the system configuration controller (so that changes to
+            // dp.SYSCFG take effect).
+            //
+            // This will be needed for GPIO interrupts to work.  See e.g.
+            // "RM0090 Reference manual STM32F405/415, STM32F407/417,
+            // STM32F427/437 and STM32F429/439 advanced Arm®-based 32-bit MCUs"
+            // sections:
+            //
+            // 7.3.14 RCC APB2 peripheral clock enable register (RCC_APB2ENR)
+            //
+            // 9 System configuration controller (SYSCFG)
+            //
+            dp.RCC.apb2enr.write(|w| w.syscfgen().enabled());
             // Set up the system clock to run at 48MHz
             let rcc = dp.RCC.constrain();
             let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
@@ -61,7 +75,7 @@ const APP: () = {
             // Enable interrupt on falling-edge for this input
             let mut exti = dp.EXTI;
             let mut syscfg = dp.SYSCFG;
-            //button.make_interrupt_source(&mut syscfg);
+            button.make_interrupt_source(&mut syscfg);
             button.enable_interrupt(&mut exti);
             button.trigger_on_edge(&mut exti, Edge::FALLING);
 
