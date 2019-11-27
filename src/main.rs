@@ -48,20 +48,23 @@ const APP: () = {
 
             // Set up a switch as input with interrupt
             let gpioc = dp.GPIOC.split();
-            // Pull up means not pressed = high, pressed = low
+            // The microcontroller doesn't try to "pull" a floating input
+            // either high or low.  The Nucleo-64 uses an external pull-up
+            // resistor on this pin, and also connects a normally-open push
+            // switch between it and ground, so that:
+            // not pressed = high, pressed = low
             let mut button = gpioc.pc13.into_floating_input();
-            // Enable interrupt
+            // Enable interrupt on falling-edge for this input
             let mut exti = dp.EXTI;
             let mut syscfg = dp.SYSCFG;
             //button.make_interrupt_source(&mut syscfg);
             button.enable_interrupt(&mut exti);
             button.trigger_on_edge(&mut exti, Edge::FALLING);
-            
-            // Set up the system clock. We want to run at 48MHz
-            // because ... ???
+
+            // Set up the system clock to run at 48MHz
             let rcc = dp.RCC.constrain();
             let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
-        
+
             // Create a delay abstraction based on SysTick
             let delay = hal::delay::Delay::new(cp.SYST, clocks);
             
