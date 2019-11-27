@@ -39,6 +39,10 @@ const APP: () = {
             stm32::Peripherals::take(),
             cortex_m::peripheral::Peripherals::take())
         {
+            // Set up the system clock to run at 48MHz
+            let rcc = dp.RCC.constrain();
+            let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
+
             // Set up the LED...
             // First is connected to pin PA5 on the microcontroler
             // The external LED, on the next pin down:
@@ -60,10 +64,6 @@ const APP: () = {
             //button.make_interrupt_source(&mut syscfg);
             button.enable_interrupt(&mut exti);
             button.trigger_on_edge(&mut exti, Edge::FALLING);
-
-            // Set up the system clock to run at 48MHz
-            let rcc = dp.RCC.constrain();
-            let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
 
             // Create a delay abstraction based on SysTick
             let delay = hal::delay::Delay::new(cp.SYST, clocks);
