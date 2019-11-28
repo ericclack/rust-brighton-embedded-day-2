@@ -5,8 +5,9 @@ extern crate panic_halt;
 
 use cortex_m;
 use cortex_m_rt::entry;
+use cortex_m::iprint;
+use cortex_m_semihosting::{hprintln};
 
-use cortex_m_semihosting::{debug, hprintln};
 use crate::hal::{prelude::*, stm32};
 use stm32f4xx_hal as hal;
 use stm32f4xx_hal::gpio::{ExtiPin, Edge};
@@ -29,11 +30,12 @@ const APP: () = {
         xled: hal::gpio::gpioa::PA6<hal::gpio::Output<hal::gpio::PushPull>>,
         button: hal::gpio::gpioc::PC13<hal::gpio::Input<hal::gpio::Floating>>,
         exti: stm32::EXTI,
-        delay: hal::delay::Delay            
+        delay: hal::delay::Delay,
+        itm: cortex_m::peripheral::ITM,
     }
     
     #[init]
-    fn init(_cx: init::Context) -> init::LateResources {
+    fn init(cx: init::Context) -> init::LateResources {
         // Our device and cortex peripherals
         if let (Some(dp), Some(cp)) = (
             stm32::Peripherals::take(),
@@ -81,22 +83,27 @@ const APP: () = {
 
             // Create a delay abstraction based on SysTick
             let delay = hal::delay::Delay::new(cp.SYST, clocks);
+
+            // ITM for logging
+            let itm = cx.core.ITM;
             
-            init::LateResources{ led, xled, button, exti, delay }
+            init::LateResources{ led, xled, button, exti, delay, itm }
         }
         else {
             panic!("failed to access peripherals");
         }
     }
 
-    #[idle(resources = [led, xled, button, delay])]
+    #[idle(resources = [led, xled, delay, itm])]
     fn idle(cx: idle::Context) -> ! {
 
-        let (led, xled, button, delay) = (
+        let (led, xled, delay) = (
             cx.resources.led,
             cx.resources.xled,
-            cx.resources.button,
             cx.resources.delay);
+
+        // Logging setup
+        let log = &mut cx.resources.itm.stim[0];
         
         // How quick between LED transitions?
         let ms = 250_u32;    
@@ -104,18 +111,16 @@ const APP: () = {
         
         loop {
             if next_in_ring(&PATTERN, counter) == 1 {
-                hprintln!("On").unwrap();                    
+                iprint!(log, "On");
                 led.set_high().unwrap();
                 xled.set_high().unwrap();
             }
             else {
-                hprintln!("Off").unwrap();
+                iprint!(log, "Off");
                 led.set_low().unwrap();
                 xled.set_low().unwrap();                    
             }
 
-            //let pressed = button.is_low();
-            //hprintln!("Button {:?}", pressed).unwrap();
             delay.delay_ms(ms);
             counter += 1;
         }
@@ -123,7 +128,7 @@ const APP: () = {
 
     #[task(binds = EXTI15_10, priority = 2, resources = [button, exti])]
     fn press(cx: press::Context) {
-        hprintln!("Interrupt!").unwrap();        
+        hprintln!("Interrupt!");
         cx.resources.button.clear_interrupt_pending_bit(cx.resources.exti);
     }
 
