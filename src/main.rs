@@ -9,17 +9,29 @@ use cortex_m::iprint;
 use cortex_m_semihosting::{hprintln};
 
 use crate::hal::{prelude::*, stm32};
+use hal::spi::*;
 use stm32f4xx_hal as hal;
 use stm32f4xx_hal::gpio::{ExtiPin, Edge};
 
-// LED display pattern, and step size in ms
-static PATTERN: [i32; 8] = [1, 1, 1, 0, 1, 0, 1, 0];
+use ws2812_spi as ws2812;
+use crate::ws2812::Ws2812;
+
+use smart_leds_trait::RGB8;
+use smart_leds::SmartLedsWrite;
 
 /// Treat the array as a ring, i.e. the counter wraps around so
 /// that you can repeat the array forever by incrementing counter
 fn next_in_ring(an_array: &[i32], counter: usize) -> i32 {
     let slice = counter % an_array.len();
     an_array[slice]
+}
+
+fn rotate_array(data: &mut [RGB8]) {
+    let temp: RGB8 = data[0];
+    for i in 0..data.len()-1 {
+        data[i] = data[i+1];
+    }
+    data[data.len()-1] = temp;
 }
 
 #[rtfm::app(device = stm32f4xx_hal::stm32)]
@@ -32,6 +44,8 @@ const APP: () = {
         exti: stm32::EXTI,
         delay: hal::delay::Delay,
         itm: cortex_m::peripheral::ITM,
+        
+        led_controller: ws2812_spi::Ws2812<stm32f4xx_hal::spi::Spi<stm32f4xx_hal::stm32::SPI1, (stm32f4xx_hal::gpio::gpiob::PB3<stm32f4xx_hal::gpio::Alternate<stm32f4xx_hal::gpio::AF5>>, stm32f4xx_hal::spi::NoMiso, stm32f4xx_hal::gpio::gpiob::PB5<stm32f4xx_hal::gpio::Alternate<stm32f4xx_hal::gpio::AF5>>)>>
     }
     
     #[init]
@@ -87,44 +101,74 @@ const APP: () = {
             // ITM for logging
             let mut itm = cx.core.ITM;
             let log = &mut itm.stim[0];
-            iprint!(log, "Init");            
+            iprint!(log, "Init");
 
-            init::LateResources{ led, xled, button, exti, delay, itm }
+            // Configure pins for SPI
+            // We don't connect sck, but I think the SPI traits require it?
+            let gpiob = dp.GPIOB.split();
+            let sck = gpiob.pb3.into_alternate_af5();
+            // Master Out Slave In - pb5, Nucleo 64 pin d4
+            let mosi = gpiob.pb5.into_alternate_af5();
+            
+            let spi = Spi::spi1(
+                dp.SPI1,
+                (sck, NoMiso, mosi),
+                Mode {
+                    polarity: Polarity::IdleLow,
+                    phase: Phase::CaptureOnFirstTransition,
+                },
+                stm32f4xx_hal::time::KiloHertz(3000).into(),
+                clocks,
+            );
+            let mut led_controller = Ws2812::new(spi);
+
+            init::LateResources{ led, xled, button, exti, delay, itm, led_controller }
         }
         else {
             panic!("failed to access peripherals");
         }
     }
 
-    #[idle(resources = [led, xled, delay, itm])]
+    #[idle(resources = [led, xled, delay, itm, led_controller])]
     fn idle(cx: idle::Context) -> ! {
 
-        let (led, xled, delay) = (
+        let (led, xled, delay, led_controller) = (
             cx.resources.led,
             cx.resources.xled,
-            cx.resources.delay);
+            cx.resources.delay,
+            cx.resources.led_controller);
 
         // Logging setup
         let log = &mut cx.resources.itm.stim[0];
         
+        // LED patterns
+        let mut data: [RGB8; 50] = [RGB8::default(); 50];
+
+        let palette = [ RGB8{ r: 0x60, g: 0,    b: 0    }, 
+                        RGB8{ r: 0x60, g: 0x60, b: 0    }, 
+                        RGB8{ r: 0,    g: 0x60, b: 0    }, 
+                        RGB8{ r: 0,    g: 0x60, b: 0x60 }, 
+                        RGB8{ r: 0,    g: 0,    b: 0x60 } ];
+
+        for block in 0..5 {
+            for i in 0..3 {                
+                let led = (block*10+i) as usize;
+                let colour = palette[block];
+                let scale = (i+1) as u8;
+                data[led] = RGB8{ r: colour.r / scale,
+                                  g: colour.g / scale,
+                                  b: colour.b / scale };
+            }
+        }
+        
         // How quick between LED transitions?
         let ms = 250_u32;    
-        let mut counter = 0;
-        
-        loop {
-            if next_in_ring(&PATTERN, counter) == 1 {
-                iprint!(log, "On");
-                led.set_high().unwrap();
-                xled.set_high().unwrap();
-            }
-            else {
-                iprint!(log, "Off");
-                led.set_low().unwrap();
-                xled.set_low().unwrap();                    
-            }
 
+        loop {
+            led_controller.write(data.iter().cloned()).unwrap();
             delay.delay_ms(ms);
-            counter += 1;
+
+            rotate_array(&mut data);
         }
     }
 
