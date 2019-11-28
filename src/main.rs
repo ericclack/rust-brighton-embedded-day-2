@@ -39,6 +39,24 @@ const APP: () = {
             stm32::Peripherals::take(),
             cortex_m::peripheral::Peripherals::take())
         {
+            // Write the SYSCFGGEN bit to this register in order to enable
+            // the system configuration controller (so that changes to
+            // dp.SYSCFG take effect).
+            //
+            // This will be needed for GPIO interrupts to work.  See e.g.
+            // "RM0090 Reference manual STM32F405/415, STM32F407/417,
+            // STM32F427/437 and STM32F429/439 advanced Arm®-based 32-bit MCUs"
+            // sections:
+            //
+            // 7.3.14 RCC APB2 peripheral clock enable register (RCC_APB2ENR)
+            //
+            // 9 System configuration controller (SYSCFG)
+            //
+            dp.RCC.apb2enr.write(|w| w.syscfgen().enabled());
+            // Set up the system clock to run at 48MHz
+            let rcc = dp.RCC.constrain();
+            let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
+
             // Set up the LED...
             // First is connected to pin PA5 on the microcontroler
             // The external LED, on the next pin down:
@@ -48,20 +66,19 @@ const APP: () = {
 
             // Set up a switch as input with interrupt
             let gpioc = dp.GPIOC.split();
-            // Pull up means not pressed = high, pressed = low
+            // The microcontroller doesn't try to "pull" a floating input
+            // either high or low.  The Nucleo-64 uses an external pull-up
+            // resistor on this pin, and also connects a normally-open push
+            // switch between it and ground, so that:
+            // not pressed = high, pressed = low
             let mut button = gpioc.pc13.into_floating_input();
-            // Enable interrupt
+            // Enable interrupt on falling-edge for this input
             let mut exti = dp.EXTI;
             let mut syscfg = dp.SYSCFG;
-            //button.make_interrupt_source(&mut syscfg);
+            button.make_interrupt_source(&mut syscfg);
             button.enable_interrupt(&mut exti);
             button.trigger_on_edge(&mut exti, Edge::FALLING);
-            
-            // Set up the system clock. We want to run at 48MHz
-            // because ... ???
-            let rcc = dp.RCC.constrain();
-            let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
-        
+
             // Create a delay abstraction based on SysTick
             let delay = hal::delay::Delay::new(cp.SYST, clocks);
             
