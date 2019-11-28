@@ -85,8 +85,10 @@ const APP: () = {
             let delay = hal::delay::Delay::new(cp.SYST, clocks);
 
             // ITM for logging
-            let itm = cx.core.ITM;
-            
+            let mut itm = cx.core.ITM;
+            let log = &mut itm.stim[0];
+            iprint!(log, "Init ");            
+
             init::LateResources{ led, xled, button, exti, delay, itm }
         }
         else {
@@ -126,8 +128,14 @@ const APP: () = {
         }
     }
 
-    #[task(binds = EXTI15_10, priority = 2, resources = [button, exti])]
+    #[task(binds = EXTI15_10, priority = 2, resources = [button, exti, itm])]
     fn press(cx: press::Context) {
+
+        // Logging setup
+        //let log = &mut cx.resources.itm.stim[0];
+        //iprint!(log, "Interrupt!");
+        // ...doesn't work here, use hprintln!
+        
         hprintln!("Interrupt!");
         cx.resources.button.clear_interrupt_pending_bit(cx.resources.exti);
     }
