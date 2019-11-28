@@ -87,7 +87,7 @@ const APP: () = {
             // ITM for logging
             let mut itm = cx.core.ITM;
             let log = &mut itm.stim[0];
-            iprint!(log, "Init ");            
+            iprint!(log, "Init");            
 
             init::LateResources{ led, xled, button, exti, delay, itm }
         }
@@ -128,7 +128,7 @@ const APP: () = {
         }
     }
 
-    #[task(binds = EXTI15_10, priority = 2, resources = [button, exti, itm])]
+    #[task(binds = EXTI15_10, priority = 2, resources = [button, exti])]
     fn press(cx: press::Context) {
 
         // Logging setup
@@ -136,7 +136,7 @@ const APP: () = {
         //iprint!(log, "Interrupt!");
         // ...doesn't work here, use hprintln!
         
-        hprintln!("Interrupt!");
+        hprintln!("Interrupt!").unwrap();
         cx.resources.button.clear_interrupt_pending_bit(cx.resources.exti);
     }
 
