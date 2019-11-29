@@ -150,6 +150,8 @@ const APP: () = {
                         RGB8{ r: 0,    g: 0x60, b: 0x60 }, 
                         RGB8{ r: 0,    g: 0,    b: 0x60 } ];
 
+        // Possible that r and g are transposed with our
+        // LED hardware
         for block in 0..5 {
             for i in 0..3 {                
                 let led = (block*10+i) as usize;
