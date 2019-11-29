@@ -9,8 +9,8 @@ Our aim is to drive some Christmas tree lights like these:
 # To do
 
 * Move util functions into their own module
-* Experiment with interrupts, maybe to switch patterns?
-* Wire up the LED string
+* Now we have interrupts working for the button, make it do something
+* Add more LED patterns
 * ...
 
 # Running
